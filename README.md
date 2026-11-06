@@ -33,7 +33,7 @@ The refractive indices are treated as constant in this introductory setup. For q
 
 ## Getting started
 
-Read the [Tutorial](docs/TUTORIAL.md) for the modeling workflow, setup instructions, and simulation checks.
+Read the [Tutorial](TUTORIAL.md) for the modeling workflow, setup instructions, and simulation checks.
 
 Meep is available through Conda and, on supported platforms, PyPI. Native Windows installation is not supported by the official Meep documentation; on Windows, use WSL2 with Ubuntu or another supported Linux environment.
 
@@ -59,9 +59,8 @@ The import name is `meep`, although the PyPI package is named `pymeep`. Check th
 ```text
 Bend_Waveguide_Tutorial/
 ├── README.md
-├── LICENSE
-└── docs/
-    └── TUTORIAL.md
+├── TUTORIAL.md
+└── LICENSE
 ```
 
 This initial version contains the documentation workflow. Runnable project-specific simulation scripts and generated results will be added after their geometry, source configuration, and output format have been finalized and tested.
