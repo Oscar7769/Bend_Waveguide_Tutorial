@@ -1,10 +1,10 @@
 <div align="center">
 
-<h1>90° 矽光子彎曲波導<br>結構反向設計與 FDTD 模擬教學</h1>
+<h1>90° 矽光子彎曲波導結構<br>反向設計與 FDTD 模擬教學</h1>
 
 <p>
   <strong>
-    使用 Meep 有限差分時域法（FDTD）評估彎曲波導的 TE₀ 模態傳輸，<br>
+    使用 MEEP 有限差分時域法（FDTD）評估彎曲波導的 TE₀ 模態傳輸，<br>
     並比較 2D Fourier Basis、Gaussian Upsampling 與 β-VAE 三種結構編碼方法。
   </strong>
 </p>
@@ -64,7 +64,7 @@
 ~~~mermaid
 flowchart TD
     A["產生初始設計變數"] --> B["結構編碼與幾何解碼"]
-    B --> C["Meep FDTD 模擬"]
+    B --> C["MEEP FDTD 模擬"]
     C --> D["計算 TE₀ 模態穿透率"]
     D --> E["建立並更新訓練資料集"]
     E --> F["訓練 Factorization Machine"]
@@ -96,8 +96,8 @@ flowchart TD
 **目前程式設定：** 10 × 10 modes、100 個二元變數；初始資料集 1,000 筆，每輪新增 30 個候選結構，共執行 100 輪。程式輸出最佳結構、Ez 場分佈、FoM 歷程及最佳化軌跡。
 
 <p align="center">
-  <img src="assets/best_structure_fourier.png" width="42%" alt="Fourier best designed structure">
-  <img src="assets/field_fourier.png" width="52%" alt="Fourier electric field distribution">
+  <img src="assets/best_structure_fourier.png" width="50%" alt="Fourier best designed structure">
+  <img src="assets/field_fourier.png" width="50%" alt="Fourier electric field distribution">
   <br><em>圖 3. Fourier 最佳化結構（左）及其 Ez 場分佈（右）。</em>
 </p>
 
@@ -115,17 +115,17 @@ flowchart TD
   <br><em>圖 4. Gaussian Upsampling：由低解析度二元網格經 Gaussian 平滑及 Tanh 投影形成材料分佈。</em>
 </p>
 
-GU 直接以 10 × 10 二元網格作為設計變數，共 **100 個二元變數**。解碼時先使用 5 × 5、標準差 sigma = 1.0 的 Gaussian kernel 對網格做卷積，得到連續密度分佈；接著使用 Tanh projection 將密度推向接近 0 或 1 的區域：
+GU 直接以 12 × 12 二元網格作為設計變數，共 **144 個二元變數**。解碼時先使用 5 × 5、標準差 sigma = 1.0 的 Gaussian kernel 對網格做卷積，得到連續密度分佈；接著使用 Tanh projection 將密度推向接近 0 或 1 的區域：
 
 `projected_density = TanhProjection(GaussianFilter(binary_grid), beta=50, eta=0.5)`
 
 投影後的密度會映射至 Meep MaterialGrid，並設定 smoothing radius。相較於直接以像素表示結構，GU 讓相鄰設計變數之間具有平滑關聯，有助於降低過度零碎的材料邊界。
 
-**目前程式設定：** 10 × 10 網格、100 個二元變數；Gaussian kernel 為 5 × 5、sigma = 1.0，Tanh projection 使用 beta = 50、eta = 0.5。初始資料集 1,000 筆，每輪新增 30 個候選結構，共執行 100 輪。
+**目前程式設定：** 12 × 12 網格、144 個二元變數；Gaussian kernel 為 5 × 5、sigma = 1.0，Tanh projection 使用 beta = 50、eta = 0.5。初始資料集 1,000 筆，每輪新增 30 個候選結構，共執行 100 輪。
 
 <p align="center">
-  <img src="assets/best_structure_gu.png" width="42%" alt="Gaussian upsampling best designed structure">
-  <img src="assets/field_gu.png" width="52%" alt="Gaussian upsampling electric field distribution">
+  <img src="assets/best_structure_gu.png" width="50%" alt="Gaussian upsampling best designed structure">
+  <img src="assets/field_gu.png" width="50%" alt="Gaussian upsampling electric field distribution">
   <br><em>圖 5. GU 最佳化結構（左）及其 Ez 場分佈（右）。</em>
 </p>
 
@@ -145,9 +145,9 @@ GU 直接以 10 × 10 二元網格作為設計變數，共 **100 個二元變數
 
 β-VAE 先產生 **10,000 組 64 × 64 合成二元結構**作為訓練資料。Encoder 使用卷積層將輸入結構壓縮成潛在分佈；每個潛在維度採用 2 類別的 categorical representation，並透過 Gumbel-Softmax 進行可微分取樣。Decoder 再將潛在表示還原成 64 × 64 結構。
 
-目前程式設定為 **100 個 categorical latent variables，每個變數有 2 個類別**，因此最佳化時以 100 個二元選擇描述潛在表示。Decoder 輸出會再經過 5 × 5、sigma = 1.0 的 Gaussian smoothing，以及 beta = 30、eta = 0.5 的 Tanh projection，最後以 0.5 為門檻二值化後交由 Meep 評估。VAE 訓練損失中的 KL 項權重設為 0.01。
+目前程式設定為 **144 個 categorical latent variables，每個變數有 2 個類別**，因此最佳化時以 100 個二元選擇描述潛在表示。Decoder 輸出會再經過 5 × 5、sigma = 1.0 的 Gaussian smoothing，以及 beta = 30、eta = 0.5 的 Tanh projection，最後以 0.5 為門檻二值化後交由 Meep 評估。VAE 訓練損失中的 KL 項權重設為 0.01。
 
-**目前程式設定：** 輸入／輸出結構為 64 × 64、100 個二元潛在變數、10,000 組合成訓練樣本、30 epochs；最佳化階段使用 2,000 筆初始模擬資料，每輪新增 30 個候選結構，共執行 200 輪。與 Fourier 和 GU 相比，β-VAE 的結構表示經過額外的生成模型訓練，搜尋變數代表潛在空間的選擇，而不是直接對應 64 × 64 像素。
+**目前程式設定：** 輸入／輸出結構為 64 × 64、144 個二元潛在變數、10,000 組合成訓練樣本、30 epochs；最佳化階段使用 2,000 筆初始模擬資料，每輪新增 30 個候選結構，共執行 200 輪。與 Fourier 和 GU 相比，β-VAE 的結構表示經過額外的生成模型訓練，搜尋變數代表潛在空間的選擇，而不是直接對應 64 × 64 像素。
 
 <p align="center">
   <img src="assets/best_latent_bvae.png" width="32%" alt="Best beta VAE latent representation">
@@ -211,8 +211,8 @@ GU 直接以 10 × 10 二元網格作為設計變數，共 **100 個二元變數
 
 | 類別 | 參數 | 數值 |
 |---|---|---:|
-| 設計空間 | 二元網格 | 10 × 10 |
-| 設計空間 | 二元變數數量 | 100 |
+| 設計空間 | 二元網格 | 12 × 12 |
+| 設計空間 | 二元變數數量 | 144 |
 | Gaussian kernel | Kernel size | 5 × 5 |
 | Gaussian kernel | 標準差 σ | 1.0 |
 | Tanh projection | β | 50 |
@@ -236,7 +236,7 @@ GU 直接以 10 × 10 二元網格作為設計變數，共 **100 個二元變數
 |---|---|---:|
 | 輸入結構 | 影像尺寸 | 64 × 64 |
 | VAE | 隱藏層 | 512、256 |
-| VAE | 潛在變數數量 N | 100 |
+| VAE | 潛在變數數量 N | 144 |
 | VAE | 每個潛在變數類別數 K | 2 |
 | VAE 訓練 | 合成資料數量 | 10,000 |
 | VAE 訓練 | Batch size | 64 |
@@ -275,7 +275,7 @@ GU 直接以 10 × 10 二元網格作為設計變數，共 **100 個二元變數
 
 從方法特性來看，Fourier Basis 以預先定義的空間頻率基底組合表示結構；GU 直接搜尋低解析度二元網格，再以 Gaussian smoothing 和 Tanh projection 建立較平滑的材料分佈；β-VAE 則先學習合成結構的分佈，再透過潛在變數控制 Decoder 生成高解析度結構。三種方法提供不同的設計空間限制與結構先驗。
 
-目前程式會輸出各自的最佳結構、場分佈與最佳化歷程。比較不同方法時，建議統一 Meep 模擬區域、材料折射率、波導尺寸、中心波長、模態監測方式及 FDTD resolution；若要比較收斂速度，應以**累積 FDTD 評估次數**作為共同橫軸，而不只比較迭代輪數。
+目前程式會輸出各自的最佳結構、場分佈與最佳化歷程。比較不同方法時，建議統一 MEEP 模擬區域、材料折射率、波導尺寸、中心波長、模態監測方式及 FDTD resolution；若要比較收斂速度，應以**累積 FDTD 評估次數**作為共同橫軸，而不只比較迭代輪數。
 
 **所有結果皆為 Meep 二維 FDTD 數值模擬結果，並非實際元件量測。** SA 與初始樣本具有隨機性，且退火搜尋不保證找到全域最佳解。本文所稱的最佳結構，應理解為該次實驗中已評估樣本的最佳解（best-found solution）。
 
@@ -388,24 +388,24 @@ Bend_Waveguide_Tutorial/
 
 ~~~bash
 cd Tutorial/Gaussian_Upsampling
-mpirun -np 31 python WG_GU_1000_10x10.py --name bend_gu
+mpirun -np 31 python WG_GU_1000_10x10.py > WG_GU.log 2>&1
 ~~~
 
 ### 執行 2D Fourier Basis 範例
 
 ~~~bash
 cd Tutorial/2D_Fourier_Basis
-mpirun -np 31 python 2D_Fourier_10x10.py --name bend_fourier
+mpirun -np 4 python 2D_Fourier_10x10.py > WG_2D_Fourier.log 2>&1
 ~~~
 
 ### 執行 β-VAE 範例
 
 ~~~bash
 cd Tutorial/beta_VAE
-mpirun -np 31 python bVAE_gu.py
+mpirun -np 4 python bVAE_gu.py > WG_bVAE.log 2>&1
 ~~~
 
-上述 -np 31 代表啟動 31 個 MPI processes，通常包含 1 個 Master 與 30 個 Workers。請依照實際 CPU 核心數、記憶體及可用運算資源調整，不應在未評估資源的情況下任意提高行程數。
+上述 -np 4 代表啟動 4 個 MPI processes，通常包含 1 個 Master 與 3 個 Workers。請依照實際 CPU 核心數、記憶體及可用運算資源調整，不應在未評估資源的情況下任意提高行程數。
 
 各程式的結果輸出位置依程式而異，包含 Fourier 的 Results/、GU 的 Results_Bend/，以及 β-VAE 的時間戳記結果資料夾。實際路徑以執行時的工作目錄與程式輸出訊息為準。
 
