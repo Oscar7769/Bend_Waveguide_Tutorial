@@ -36,6 +36,11 @@
 
 本專案以 Meep 開源電磁模擬套件進行有限差分時域法（Finite-Difference Time-Domain, FDTD）模擬，建立輸入波導位於 **−X 側、光沿 +X 方向入射**，並由輸出波導沿 +Y 方向導出的 90° 彎曲波導模型。設計區域位於中央，透過 TE₀ 模態激發與模態係數監測，評估候選結構的穿透率。
 
+<p align="center">
+  <img src="assets/bend_geometry.png" width="78%" alt="90 degree bent waveguide geometry">
+  <br><em>圖 1. 90° 彎曲波導的模擬幾何、設計區域及輸入／輸出方向。</em>
+</p>
+
 為了探索不同的結構表示方式，本專案實作三種編碼方法：**2D Fourier Basis、Gaussian Upsampling（GU）及 β-Variational Autoencoder（β-VAE）**。各方法將低維度的最佳化變數轉換成 Meep 可用的材料分佈，再由電磁模擬計算穿透率。
 
 最佳化流程以因子分解機（Factorization Machine, FM）建立代理模型，將模型轉換為二次無約束二元最佳化（Quadratic Unconstrained Binary Optimization, QUBO）問題，並使用模擬退火（Simulated Annealing, SA）搜尋候選解。部分程式亦保留 D-Wave 量子退火（Quantum Annealing, QA）的介面。
@@ -77,6 +82,11 @@ flowchart TD
 
 **核心概念：以二維 Fourier 正弦基底的啟用組合，直接表示設計區域。**
 
+<p align="center">
+  <img src="assets/fourier_encoding.png" width="88%" alt="2D Fourier Basis encoding process">
+  <br><em>圖 2. 2D Fourier Basis：以二元 Fourier 係數組合正弦基底，重建設計區域。</em>
+</p>
+
 本方法使用 10 × 10 組 Fourier modes，每個 mode 對應一個二元變數，共 **100 個設計變數**。當係數 alpha[m,n] 為 1 時，便將對應的正弦基底加入重建場：
 
 `S(x,y) = Σ alpha[m,n] · sin(mπx) · sin(nπy)`
@@ -84,6 +94,12 @@ flowchart TD
 所有啟用的基底相加後，以 `S(x,y) > 0` 為門檻轉成二元材料分佈，再映射到 Meep 的 MaterialGrid。這種表示方式以少量頻域係數控制較高解析度的幾何結構，設計變數不是直接對應每一個 FDTD 網格像素。
 
 **目前程式設定：** 10 × 10 modes、100 個二元變數；初始資料集 1,000 筆，每輪新增 30 個候選結構，共執行 100 輪。程式輸出最佳結構、Ez 場分佈、FoM 歷程及最佳化軌跡。
+
+<p align="center">
+  <img src="assets/best_structure_fourier.png" width="42%" alt="Fourier best designed structure">
+  <img src="assets/field_fourier.png" width="52%" alt="Fourier electric field distribution">
+  <br><em>圖 3. Fourier 最佳化結構（左）及其 Ez 場分佈（右）。</em>
+</p>
 
 程式位置：
 
@@ -94,6 +110,11 @@ flowchart TD
 
 **核心概念：先以低解析度二元網格決定材料分佈，再透過 Gaussian convolution 與 Tanh projection 平滑結構。**
 
+<p align="center">
+  <img src="assets/gu_encoding.png" width="88%" alt="Gaussian upsampling encoding process">
+  <br><em>圖 4. Gaussian Upsampling：由低解析度二元網格經 Gaussian 平滑及 Tanh 投影形成材料分佈。</em>
+</p>
+
 GU 直接以 10 × 10 二元網格作為設計變數，共 **100 個二元變數**。解碼時先使用 5 × 5、標準差 sigma = 1.0 的 Gaussian kernel 對網格做卷積，得到連續密度分佈；接著使用 Tanh projection 將密度推向接近 0 或 1 的區域：
 
 `projected_density = TanhProjection(GaussianFilter(binary_grid), beta=50, eta=0.5)`
@@ -101,6 +122,12 @@ GU 直接以 10 × 10 二元網格作為設計變數，共 **100 個二元變數
 投影後的密度會映射至 Meep MaterialGrid，並設定 smoothing radius。相較於直接以像素表示結構，GU 讓相鄰設計變數之間具有平滑關聯，有助於降低過度零碎的材料邊界。
 
 **目前程式設定：** 10 × 10 網格、100 個二元變數；Gaussian kernel 為 5 × 5、sigma = 1.0，Tanh projection 使用 beta = 50、eta = 0.5。初始資料集 1,000 筆，每輪新增 30 個候選結構，共執行 100 輪。
+
+<p align="center">
+  <img src="assets/best_structure_gu.png" width="42%" alt="Gaussian upsampling best designed structure">
+  <img src="assets/field_gu.png" width="52%" alt="Gaussian upsampling electric field distribution">
+  <br><em>圖 5. GU 最佳化結構（左）及其 Ez 場分佈（右）。</em>
+</p>
 
 程式位置：
 
@@ -111,11 +138,23 @@ GU 直接以 10 × 10 二元網格作為設計變數，共 **100 個二元變數
 
 **核心概念：先讓生成式模型學習結構分佈，再於低維潛在空間中搜尋設計變數。**
 
+<p align="center">
+  <img src="assets/bvae_encoding.png" width="90%" alt="Beta variational autoencoder architecture">
+  <br><em>圖 6. β-VAE 結構生成流程：訓練資料經 Encoder 壓縮至離散潛在表示，再由 Decoder 重建設計結構。</em>
+</p>
+
 β-VAE 先產生 **10,000 組 64 × 64 合成二元結構**作為訓練資料。Encoder 使用卷積層將輸入結構壓縮成潛在分佈；每個潛在維度採用 2 類別的 categorical representation，並透過 Gumbel-Softmax 進行可微分取樣。Decoder 再將潛在表示還原成 64 × 64 結構。
 
 目前程式設定為 **100 個 categorical latent variables，每個變數有 2 個類別**，因此最佳化時以 100 個二元選擇描述潛在表示。Decoder 輸出會再經過 5 × 5、sigma = 1.0 的 Gaussian smoothing，以及 beta = 30、eta = 0.5 的 Tanh projection，最後以 0.5 為門檻二值化後交由 Meep 評估。VAE 訓練損失中的 KL 項權重設為 0.01。
 
 **目前程式設定：** 輸入／輸出結構為 64 × 64、100 個二元潛在變數、10,000 組合成訓練樣本、30 epochs；最佳化階段使用 2,000 筆初始模擬資料，每輪新增 30 個候選結構，共執行 200 輪。與 Fourier 和 GU 相比，β-VAE 的結構表示經過額外的生成模型訓練，搜尋變數代表潛在空間的選擇，而不是直接對應 64 × 64 像素。
+
+<p align="center">
+  <img src="assets/best_latent_bvae.png" width="32%" alt="Best beta VAE latent representation">
+  <img src="assets/best_structure_bvae.png" width="32%" alt="Best beta VAE decoded structure">
+  <img src="assets/field_bvae.png" width="32%" alt="Beta VAE electric field distribution">
+  <br><em>圖 7. β-VAE 最佳潛在表示（左）、Decoder 產生的二元結構（中）及其 Ez 場分佈（右）。</em>
+</p>
 
 程式位置：
 
@@ -225,6 +264,15 @@ GU 直接以 10 × 10 二元網格作為設計變數，共 **100 個二元變數
 
 > **結果解讀：** 上表列出的是目前實驗紀錄中的 best-found transmission，不代表全域最佳解，也不保證每次重新執行都會得到相同數值。三組結果使用的設計維度與 FDTD 評估預算並不完全相同，因此適合作為各方法目前成果的摘要，不應直接解讀為嚴格控制變因下的效能排名。Repository 中 Python 程式的預設參數以各方法章節及程式碼為準；表格中的 GU 與 β-VAE 數值是不同網格設定下的實驗紀錄。
 
+<p align="center">
+  <img src="assets/transmission_trajectory_fourier.png" width="32%" alt="Fourier transmission trajectory">
+  <img src="assets/transmission_trajectory_gu.png" width="32%" alt="Gaussian upsampling transmission trajectory">
+  <img src="assets/transmission_trajectory_bvae.png" width="32%" alt="Beta VAE transmission trajectory">
+  <br><em>圖 8. Fourier Basis（左）、GU（中）與 β-VAE（右）的候選樣本 TE₀ 傳輸率搜尋軌跡。</em>
+</p>
+
+三張圖分別呈現各方法初始樣本與最佳化候選樣本的傳輸率分佈。由於設計維度、初始資料量與總評估預算不同，這些圖用於觀察各方法自己的搜尋歷程，不宜直接比較點數或將其視為相同預算下的收斂速度比較。
+
 從方法特性來看，Fourier Basis 以預先定義的空間頻率基底組合表示結構；GU 直接搜尋低解析度二元網格，再以 Gaussian smoothing 和 Tanh projection 建立較平滑的材料分佈；β-VAE 則先學習合成結構的分佈，再透過潛在變數控制 Decoder 生成高解析度結構。三種方法提供不同的設計空間限制與結構先驗。
 
 目前程式會輸出各自的最佳結構、場分佈與最佳化歷程。比較不同方法時，建議統一 Meep 模擬區域、材料折射率、波導尺寸、中心波長、模態監測方式及 FDTD resolution；若要比較收斂速度，應以**累積 FDTD 評估次數**作為共同橫軸，而不只比較迭代輪數。
@@ -232,41 +280,18 @@ GU 直接以 10 × 10 二元網格作為設計變數，共 **100 個二元變數
 **所有結果皆為 Meep 二維 FDTD 數值模擬結果，並非實際元件量測。** SA 與初始樣本具有隨機性，且退火搜尋不保證找到全域最佳解。本文所稱的最佳結構，應理解為該次實驗中已評估樣本的最佳解（best-found solution）。
 
 
-### README 圖片素材清單
+### 圖片素材
 
-建議在本機 Repository 根目錄自行建立 `assets/`，將以下圖片放入其中。README 使用相對路徑 `assets/檔名.png`；目前 GitHub Repository 尚未包含這個資料夾，等圖片準備好後再一起 commit 即可。
+本專案的 README 圖片統一存放於根目錄的 `assets/`。目前已上傳並在本文引用的素材如下：
 
-**建議準備 12 張主要圖片：**
+| 分類 | 檔案 |
+|---|---|
+| 模擬幾何 | `bend_geometry.png` |
+| Fourier Basis | `fourier_encoding.png`、`best_structure_fourier.png`、`field_fourier.png`、`transmission_trajectory_fourier.png` |
+| Gaussian Upsampling | `gu_encoding.png`、`best_structure_gu.png`、`field_gu.png`、`transmission_trajectory_gu.png` |
+| β-VAE | `bvae_encoding.png`、`best_latent_bvae.png`、`best_structure_bvae.png`、`field_bvae.png`、`transmission_trajectory_bvae.png` |
 
-| 類別 | 建議檔名 | 圖片內容 | 可使用的程式輸出／製作方式 |
-|---|---|---|---|
-| 共用幾何 | `bend_geometry.png` | 90° 彎曲波導、4 × 4 µm² 設計區域、輸入／輸出方向與 PML | 依 Meep 幾何參數繪製示意圖 |
-| Fourier 編碼 | `fourier_encoding.png` | 10 × 10 Fourier coefficient、基底疊加、閾值二值化的編碼流程 | 由 Fourier Notebook 擷取並整理成流程圖 |
-| Fourier 結構 | `best_structure_fourier.png` | Fourier 最佳化後的二元材料結構 | 複製 Fourier 結果資料夾中的 `Smoothed_Binary_Structure.png` |
-| Fourier 場分佈 | `field_fourier.png` | 最佳結構中的 Ez 場強度與波導邊界 | 複製 `final_analysis_TE0_field.png` |
-| GU 編碼 | `gu_encoding.png` | 10 × 10 binary grid → Gaussian convolution → Tanh projection → MaterialGrid | 可將 `best_config_10x10.png` 與編碼流程整合成一張圖 |
-| GU 結構 | `best_structure_gu.png` | Gaussian smoothing 與 Tanh projection 後的最佳結構 | 複製 GU 結果資料夾中的 `Smoothed_Binary_Structure.png` |
-| GU 場分佈 | `field_gu.png` | 最佳 GU 結構中的 Ez 場強度與波導邊界 | 複製 `Optimized_Final_Structure.png` |
-| β-VAE 編碼 | `bvae_encoding.png` | 合成結構資料 → Encoder → 100 個 categorical latent variables → Decoder → 64 × 64 結構 | 依 β-VAE 模型架構繪製流程圖 |
-| β-VAE 潛在表示 | `best_latent_bvae.png` | 最佳化找到的 10 × 10 latent representation | 複製 `best_latent_10x10.png` |
-| β-VAE 結構 | `best_structure_bvae.png` | Decoder 產生的 64 × 64 最佳二元結構 | 由 `best_structure_64x64.npy` 使用 Matplotlib 繪製；目前程式只儲存 NPY，沒有直接輸出 PNG |
-| β-VAE 場分佈 | `field_bvae.png` | 最佳 β-VAE 結構中的 Ez 場強度與波導邊界 | 複製 `final_field.png` |
-| 綜合結果 | `fom_comparison.png` | 三種方法的最佳 FoM／傳輸率收斂曲線 | 從各自結果資料夾的 `fom_evolution.png` 整理成同一張圖；橫軸建議統一為累積 FDTD 評估次數 |
-
-**如果希望先完成精簡版首頁，優先做這 8 張：** `bend_geometry.png`、三張編碼流程圖、三張場分佈圖，以及 `fom_comparison.png`。最佳結構圖與 β-VAE 潛在表示圖可接著補上。
-
-**可選擴充圖片：** `optimization_flow.png`（整體 FM–QUBO–SA 流程，README 已有 Mermaid 版本）、`trajectory_comparison.png`（候選樣本傳輸率分佈）、`runtime_comparison.png`（FM 訓練、SA 與 FDTD 時間比較）。若要使用這些跨方法比較圖，請先確認統計定義及模擬預算一致。
-
-圖片完成後，再於對應方法章節加入圖片引用，例如：
-
-~~~markdown
-<p align="center">
-  <img src="assets/fourier_encoding.png" width="85%" alt="2D Fourier Basis encoding">
-  <br><em>圖：以 Fourier 基底係數組合表示彎曲波導設計區域。</em>
-</p>
-~~~
-
-結果圖建議使用 PNG，架構示意圖可使用 SVG 或 PNG；保留原始模擬輸出，不要只保留裁切後的 README 圖片。
+目前各方法的搜尋軌跡圖分別呈現，尚未另外製作統一評估預算下的 FoM comparison 圖。日後若新增跨方法比較，建議統一橫軸為累積 FDTD 評估次數，並註明各實驗的設計變數數量及模擬預算。
 
 
 ## 教學
@@ -304,6 +329,21 @@ Bend_Waveguide_Tutorial/
 ├── README.md
 ├── TUTORIAL.md
 ├── LICENSE
+├── assets/
+│   ├── bend_geometry.png
+│   ├── fourier_encoding.png
+│   ├── best_structure_fourier.png
+│   ├── field_fourier.png
+│   ├── transmission_trajectory_fourier.png
+│   ├── gu_encoding.png
+│   ├── best_structure_gu.png
+│   ├── field_gu.png
+│   ├── transmission_trajectory_gu.png
+│   ├── bvae_encoding.png
+│   ├── best_latent_bvae.png
+│   ├── best_structure_bvae.png
+│   ├── field_bvae.png
+│   └── transmission_trajectory_bvae.png
 ├── Tutorial/
 │   ├── 2D_Fourier_Basis/
 │   │   ├── 2D_Fourier_10x10.ipynb
