@@ -75,17 +75,13 @@ flowchart TD
 
 ### 2. 2D Fourier Basis
 
-**核心概念：以一組二維 Fourier 正弦基底的啟用組合，直接表示設計區域。**
+**核心概念：以二維 Fourier 正弦基底的啟用組合，直接表示設計區域。**
 
-本方法將設計區域切分為 (10 \times 10) 組 Fourier modes，每個 mode 對應一個二元變數，共 **100 個設計變數**。當某個係數為 1 時，便將對應的正弦基底加入重建場：
+本方法使用 10 × 10 組 Fourier modes，每個 mode 對應一個二元變數，共 **100 個設計變數**。當係數 alpha[m,n] 為 1 時，便將對應的正弦基底加入重建場：
 
-$
-S(x,y)=\sum_{m=1}^{10}\sum_{n=1}^{10}
-\alpha_{mn}\sin(m\pi x)\sin(n\pi y),
-\qquad \alpha_{mn}\in\{0,1\}.
-$
+`S(x,y) = Σ alpha[m,n] · sin(mπx) · sin(nπy)`
 
-所有啟用的基底相加後，以 (S(x,y)>0) 為門檻轉成二元材料分佈，再映射到 Meep 的 MaterialGrid。這種表示方式以少量頻域係數控制較高解析度的幾何結構，設計變數不是直接對應每一個 FDTD 網格像素。
+所有啟用的基底相加後，以 `S(x,y) > 0` 為門檻轉成二元材料分佈，再映射到 Meep 的 MaterialGrid。這種表示方式以少量頻域係數控制較高解析度的幾何結構，設計變數不是直接對應每一個 FDTD 網格像素。
 
 **目前程式設定：** 10 × 10 modes、100 個二元變數；初始資料集 1,000 筆，每輪新增 30 個候選結構，共執行 100 輪。程式輸出最佳結構、Ez 場分佈、FoM 歷程及最佳化軌跡。
 
@@ -98,17 +94,13 @@ $
 
 **核心概念：先以低解析度二元網格決定材料分佈，再透過 Gaussian convolution 與 Tanh projection 平滑結構。**
 
-GU 直接以 (10 \times 10) 二元網格作為設計變數，共 **100 個二元變數**。解碼時先使用 (5 \times 5)、標準差 $\\sigma=1.0$ 的 Gaussian kernel 對網格做卷積，得到連續密度分佈；接著使用 Tanh projection 將密度推向接近 0 或 1 的區域：
+GU 直接以 10 × 10 二元網格作為設計變數，共 **100 個二元變數**。解碼時先使用 5 × 5、標準差 sigma = 1.0 的 Gaussian kernel 對網格做卷積，得到連續密度分佈；接著使用 Tanh projection 將密度推向接近 0 或 1 的區域：
 
-[
-\tilde{\rho}=\operatorname{GaussianFilter}(\rho), 
-\qquad
-\rho_{p}=\operatorname{TanhProjection}(\tilde{\rho};\beta=50,\eta=0.5).
-$
+`projected_density = TanhProjection(GaussianFilter(binary_grid), beta=50, eta=0.5)`
 
 投影後的密度會映射至 Meep MaterialGrid，並設定 smoothing radius。相較於直接以像素表示結構，GU 讓相鄰設計變數之間具有平滑關聯，有助於降低過度零碎的材料邊界。
 
-**目前程式設定：** 10 × 10 網格、100 個二元變數；Gaussian kernel 為 5 × 5、$\\sigma=1.0$，Tanh projection 使用 (eta=50)、$\\eta=0.5$。初始資料集 1,000 筆，每輪新增 30 個候選結構，共執行 100 輪。
+**目前程式設定：** 10 × 10 網格、100 個二元變數；Gaussian kernel 為 5 × 5、sigma = 1.0，Tanh projection 使用 beta = 50、eta = 0.5。初始資料集 1,000 筆，每輪新增 30 個候選結構，共執行 100 輪。
 
 程式位置：
 
@@ -121,7 +113,7 @@ $
 
 β-VAE 先產生 **10,000 組 64 × 64 合成二元結構**作為訓練資料。Encoder 使用卷積層將輸入結構壓縮成潛在分佈；每個潛在維度採用 2 類別的 categorical representation，並透過 Gumbel-Softmax 進行可微分取樣。Decoder 再將潛在表示還原成 64 × 64 結構。
 
-目前程式設定為 **100 個 categorical latent variables，每個變數有 2 個類別**，因此最佳化時以 100 個二元選擇描述潛在表示。Decoder 輸出會再經過 (5 \times 5)、$\\sigma=1.0$ 的 Gaussian smoothing，以及 (eta=30)、$\\eta=0.5$ 的 Tanh projection，最後以 0.5 為門檻二值化後交由 Meep 評估。VAE 訓練損失中的 KL 項權重設為 0.01。
+目前程式設定為 **100 個 categorical latent variables，每個變數有 2 個類別**，因此最佳化時以 100 個二元選擇描述潛在表示。Decoder 輸出會再經過 5 × 5、sigma = 1.0 的 Gaussian smoothing，以及 beta = 30、eta = 0.5 的 Tanh projection，最後以 0.5 為門檻二值化後交由 Meep 評估。VAE 訓練損失中的 KL 項權重設為 0.01。
 
 **目前程式設定：** 輸入／輸出結構為 64 × 64、100 個二元潛在變數、10,000 組合成訓練樣本、30 epochs；最佳化階段使用 2,000 筆初始模擬資料，每輪新增 30 個候選結構，共執行 200 輪。與 Fourier 和 GU 相比，β-VAE 的結構表示經過額外的生成模型訓練，搜尋變數代表潛在空間的選擇，而不是直接對應 64 × 64 像素。
 
@@ -129,7 +121,6 @@ $
 
 - [bVAE_gu.ipynb](Tutorial/beta_VAE/bVAE_gu.ipynb)
 - [bVAE_gu.py](Tutorial/beta_VAE/bVAE_gu.py)
-
 
 ## 模擬設定
 
