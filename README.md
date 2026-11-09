@@ -225,6 +225,40 @@ Gaussian Upsampling 將低解析度二元變數重組為二維網格，先進行
 
 **所有結果皆為 Meep 二維 FDTD 數值模擬結果，並非實際元件量測。** SA 與初始樣本具有隨機性，每次執行不保證得到相同結果；退火搜尋亦不保證找到全域最佳解。本文所稱的最佳結構，應理解為該次執行中已評估樣本的最佳解（best-found solution）。
 
+### README 圖片規劃
+
+為了讓首頁更容易理解研究流程，建議將整理後的圖片集中放在根目錄的 `assets/`。以下是依照目前三套程式的實際輸出內容規劃的圖片清單；這些是**建議放入的素材名稱**，不是目前已經存在的圖片。請將程式執行後的結果複製到 `assets/`，再取消對應的 Markdown 圖片註解即可。
+
+| 建議檔名 | 圖片內容 | 建議來源／製作方式 | README 用途 |
+|---|---|---|---|
+| `bend_geometry.png` | 90° 彎曲波導配置、4 × 4 µm² 設計區域、輸入與輸出方向、PML | 依 Meep 幾何參數繪製示意圖 | 首頁總覽，讓讀者先理解元件 |
+| `optimization_flow.png` | 編碼 → Meep FDTD → FoM → FM → QUBO → SA → 更新資料集 | 依 README 的流程圖整理成高解析度圖片；也可保留 Mermaid 流程圖 | 說明整體最佳化架構 |
+| `fourier_encoding.png` | Fourier 基底組合及二值化後的結構 | 可由 Fourier Notebook 擷取／整理 | Fourier 方法介紹 |
+| `gu_encoding.png` | 低解析度二元網格、Gaussian 平滑、Tanh 投影與最終結構 | 依 GU Notebook 的編碼步驟製作流程圖 | GU 方法介紹 |
+| `bvae_encoding.png` | 合成訓練樣本、Encoder／潛在變數／Decoder、64 × 64 輸出 | 依 β-VAE Notebook 與模型架構繪製 | β-VAE 方法介紹 |
+| `best_structure_fourier.png` | Fourier 最佳結構與材料邊界 | `final_analysis_TE0_field.png` 或 `Smoothed_Binary_Structure.png` 擷取設計區域 | 比較最佳結構 |
+| `best_structure_gu.png` | GU 最佳二元配置及平滑後結構 | `best_config_10x10.png`（實際尺寸依設定）及 `Smoothed_Binary_Structure.png` | 比較最佳結構 |
+| `best_structure_bvae.png` | β-VAE 最佳潛在表示解碼出的 64 × 64 結構 | 由 `best_structure_64x64.npy` 繪圖；程式另存 `best_latent_10x10.png` | 比較最佳結構 |
+| `field_fourier.png` | Fourier 最佳結構的 Ez 場強度分佈 | `final_analysis_TE0_field.png` | 展示電磁場傳播 |
+| `field_gu.png` | GU 最佳結構的場強度分佈 | `Optimized_Final_Structure.png` | 展示電磁場傳播 |
+| `field_bvae.png` | β-VAE 最佳結構的 Ez 場分佈 | `final_field.png` | 展示電磁場傳播 |
+| `fom_comparison.png` | 三種方法最佳 FoM／穿透率隨迭代變化 | 整合三次實驗的 `fom_evolution.png`，統一座標與定義 | 比較收斂情形 |
+| `trajectory_comparison.png` | 三種方法所有候選樣本的穿透率分佈 | 整合各方法的 `transmission_trajectory.png` | 比較搜尋過程 |
+| `runtime_comparison.png` | 三種方法的模擬、FM 訓練與退火時間比較 | 整理各程式的時間紀錄；需先確認統計欄位定義一致 | 比較計算成本 |
+
+**建議優先順序：** 第一階段先準備 `bend_geometry.png`、三張最佳結構圖、三張場分佈圖與三種方法的 FoM 收斂比較；第二階段再補編碼流程圖與計算時間比較。跨方法比較圖應使用相同的 FoM 定義、評估預算與座標尺度，避免造成不公平的視覺比較。
+
+圖片檔案建議使用 PNG（結果圖）或 SVG（向量示意圖），並保留原始模擬輸出，不要只保留裁切後的 README 版本。
+
+<!--
+圖片完成後，可在適當章節插入，例如：
+
+<p align="center">
+  <img src="assets/bend_geometry.png" width="85%" alt="90° 彎曲波導幾何與模擬區域">
+  <br><em>圖 1. 90° 彎曲波導幾何、設計區域及輸入輸出方向。</em>
+</p>
+-->
+
 ## 教學
 
 本 Repository 依照結構編碼方法分成三個獨立的 Tutorial。每個方法皆提供 Jupyter Notebook 與 Python 程式，Notebook 適合逐步閱讀與理解流程，Python 程式則適合透過 MPI 執行完整最佳化。
@@ -259,6 +293,8 @@ Gaussian Upsampling 將低解析度二元變數重組為二維網格，先進行
 Bend_Waveguide_Tutorial/
 ├── README.md
 ├── TUTORIAL.md
+├── assets/
+│   └── .gitkeep
 ├── LICENSE
 ├── Tutorial/
 │   ├── 2D_Fourier_Basis/
