@@ -304,7 +304,7 @@ GU 直接以 12 × 12 二元網格作為設計變數，共 **144 個二元變數
 |---|---|
 | [2D_Fourier_10x10.ipynb](Tutorial/2D_Fourier_Basis/2D_Fourier_10x10.ipynb) | Fourier 基底編碼與彎曲波導設計教學 |
 | [2D_Fourier_10x10.py](Tutorial/2D_Fourier_Basis/2D_Fourier_10x10.py) | 2D Fourier Basis 最佳化與 Meep 模擬程式 |
-| factorization_machine.py | FM 代理模型實作 |
+| [factorization_machine.py](Tutorial/2D_Fourier_Basis/factorization_machine.py) | FM 代理模型實作 |
 
 ### 2. Gaussian Upsampling Tutorial
 
@@ -312,7 +312,7 @@ GU 直接以 12 × 12 二元網格作為設計變數，共 **144 個二元變數
 |---|---|
 | [WG_GU_1000_10x10.ipynb](Tutorial/Gaussian_Upsampling/WG_GU_1000_10x10.ipynb) | Gaussian Upsampling 結構編碼教學 |
 | [WG_GU_1000_10x10.py](Tutorial/Gaussian_Upsampling/WG_GU_1000_10x10.py) | GU 最佳化與 Meep 模擬程式 |
-| factorization_machine.py | FM 代理模型實作 |
+| [factorization_machine.py](Tutorial/Gaussian_Upsampling/factorization_machine.py) | FM 代理模型實作 |
 
 ### 3. β-VAE Tutorial
 
@@ -320,7 +320,7 @@ GU 直接以 12 × 12 二元網格作為設計變數，共 **144 個二元變數
 |---|---|
 | [bVAE_gu.ipynb](Tutorial/beta_VAE/bVAE_gu.ipynb) | β-VAE 結構生成與潛在空間最佳化教學 |
 | [bVAE_gu.py](Tutorial/beta_VAE/bVAE_gu.py) | β-VAE 訓練、FM 最佳化與 Meep 模擬程式 |
-| factorization_machine.py | FM 代理模型實作 |
+| [factorization_machine.py](Tutorial/beta_VAE/factorization_machine.py) | FM 代理模型實作 |
 
 ### 專案結構
 
