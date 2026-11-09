@@ -96,8 +96,8 @@ flowchart TD
 **目前程式設定：** 10 × 10 modes、100 個二元變數；初始資料集 1,000 筆，每輪新增 30 個候選結構，共執行 100 輪。程式輸出最佳結構、Ez 場分佈、FoM 歷程及最佳化軌跡。
 
 <p align="center">
-  <img src="assets/best_structure_fourier.png" width="50%" alt="Fourier best designed structure">
-  <img src="assets/field_fourier.png" width="50%" alt="Fourier electric field distribution">
+  <img src="assets/best_structure_fourier.png" width="45%" alt="Fourier best designed structure">
+  <img src="assets/field_fourier.png" width="45%" alt="Fourier electric field distribution">
   <br><em>圖 3. Fourier 最佳化結構（左）及其 Ez 場分佈（右）。</em>
 </p>
 
@@ -124,8 +124,8 @@ GU 直接以 12 × 12 二元網格作為設計變數，共 **144 個二元變數
 **目前程式設定：** 12 × 12 網格、144 個二元變數；Gaussian kernel 為 5 × 5、sigma = 1.0，Tanh projection 使用 beta = 50、eta = 0.5。初始資料集 1,000 筆，每輪新增 30 個候選結構，共執行 100 輪。
 
 <p align="center">
-  <img src="assets/best_structure_gu.png" width="50%" alt="Gaussian upsampling best designed structure">
-  <img src="assets/field_gu.png" width="50%" alt="Gaussian upsampling electric field distribution">
+  <img src="assets/best_structure_gu.png" width="45%" alt="Gaussian upsampling best designed structure">
+  <img src="assets/field_gu.png" width="45%" alt="Gaussian upsampling electric field distribution">
   <br><em>圖 5. GU 最佳化結構（左）及其 Ez 場分佈（右）。</em>
 </p>
 
